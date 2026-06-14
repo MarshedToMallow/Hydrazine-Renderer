@@ -70,13 +70,6 @@ def get_color(ray: Ray3D) -> RGB:
     else:
         return nearest.material.color
 
-    # Red Circle (Trivial logic to simulate an unshaded red sphere)
-    if ray.direction.x ** 2 + ray.direction.y ** 2 <= 0.1:
-        return (1.0, 0.0, 0.0)
-
-    # Sky color (Default, blue)
-    return (0.5, 0.5, 1.0)
-
 
 
 image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT))
