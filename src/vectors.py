@@ -1,3 +1,7 @@
+from typing import Self
+
+
+
 class Vec3:
     def __init__(self, x: float, y: float, z: float):
         self.x = x
@@ -15,27 +19,27 @@ class Vec3:
             case "length":
                 return self.magnitude
 
-    def __abs__(self):
+    def __abs__(self) -> Self:
         return Vec3(abs(self.x), abs(self.y), abs(self.z))
     
-    def __neg__(self):
+    def __neg__(self) -> Self:
         return Vec3(-self.x, -self.y, -self.z)
     
-    def __add__(self, other):
+    def __add__(self, other) -> Self:
         match other:
             case Vec3():
                 return Vec3(self.x + other.x, self.y + other.y, self.z + other.z)
     
-    def __sub__(self, other):
+    def __sub__(self, other) -> Self:
         return self + (-other)
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> Self:
         match other:
             case int() | float():
                 return Vec3(self.x * other, self.y * other, self.z * other)
     
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> Self:
         return self.__mul__(other)
     
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> Self:
         return self.__mul__(1 / other)
