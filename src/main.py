@@ -27,8 +27,6 @@ SHAPES = [Sphere(Vec3(0, 0, -4), 0.5, Material(RGB(1.0, 0.0, 0.0)))]
 
 
 
-SEEN_HIT_TYPES = set()
-
 def get_color(ray: Ray3D) -> RGB:
     """
     Takes a given pixel ray and returns the corresponding RGB color
@@ -56,17 +54,19 @@ def get_color(ray: Ray3D) -> RGB:
             nearest = hit
         elif nearest.t > hit.t:
             nearest = hit
-    
-    if hit.hit_type not in SEEN_HIT_TYPES:
-        print(hit)
-        SEEN_HIT_TYPES.add(hit.hit_type)
 
+    # Hit nothing
     if nearest == None:
         return SKY_COLOR
+    # Hit nothing
     elif nearest.hit_type == HitType.NO_HIT:
         return SKY_COLOR
+    
+    # No material assigned to closest
     elif nearest.material == None:
         return SKY_COLOR
+    
+    # Hit something and it has a material
     else:
         return nearest.material.color
 
