@@ -18,6 +18,8 @@ class Vec3:
                 return self.magnitude
             case "length":
                 return self.magnitude
+            case _:
+                raise AttributeError(f"{key} is not a valid attribute for Vec3")
 
     def __abs__(self) -> Self:
         return Vec3(abs(self.x), abs(self.y), abs(self.z))
@@ -43,3 +45,21 @@ class Vec3:
     
     def __truediv__(self, other) -> Self:
         return self.__mul__(1 / other)
+    
+    def normalize(self) -> Self:
+        return self / self.magnitude
+    
+    def dot_product(self, other: Self) -> float:
+        return self.x * other.x + self.y * other.y + self.z * other.z
+    
+    def reflect(self, incident: Self) -> Self:
+        """
+        Compute the incident direction reflected by self as the normal
+        """
+
+        normal = self.normalize()
+        reflection = incident - 2.0 * normal.dot_product(incident) * normal
+        return reflection.normalize()
+    
+    def __str__(self):
+        return f"Vec3({self.x},{self.y},{self.z})"

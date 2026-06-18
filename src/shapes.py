@@ -1,11 +1,9 @@
-from enum import Enum
-
 from vectors import Vec3
-from materials import Material
+from materials import Material, RGB
 
 
 
-class HitType(Enum):
+class HitType:
 
     NO_HIT = 0          # No Intersections
     OUTSIDE_BEHIND = 1  # Intersection behind camera
@@ -41,6 +39,10 @@ class Ray3D:
     def get_point(self, t: float) -> Vec3:
 
         return self.origin + self.direction * t
+    
+    def __str__(self):
+
+        return f"Ray3D(origin={self.origin},direction={self.direction})"
 
 
 
@@ -54,8 +56,6 @@ class Sphere:
 
         self.material = material
     
-    # Sphere-Line intersection code from:
-    #   https://stackoverflow.com/questions/5883169/intersection-between-a-line-and-a-sphere
     def get_hit_data(self, ray: Ray3D) -> HitInfo:
         """
         Returns the nearest distance t along the ray that the given ray intersects the sphere.
@@ -70,58 +70,38 @@ class Sphere:
             Todo
         """
 
-        p0 = ray.origin
-        p1 = ray.origin + ray.direction
+        A = ray.direction.magnitude_squared
 
-        offset_a = p0 - self.center
-        offset_b = p1 - self.center
-        offset_c = p0 - p1
+        B = 2 * (
+            ray.direction.x * (ray.origin.x - self.center.x)
+            + ray.direction.y * (ray.origin.y - self.center.y)
+            + ray.direction.z * (ray.origin.z - self.center.z)
+        )
 
-        # Solving a quadratic to find the intersection point
-        #   x = (-b ± sqrt(b^2 - 4ac)) / (2a)
+        C = (ray.origin - self.center).magnitude_squared - self.radius_squared
 
-        A = offset_a.magnitude_squared - self.radius_squared
-
-        # This would make it a linear equation, so maybe it's fine to just fallback on solving linear equations?  I'm not sure (also falling back on constants if B == 0)
-        if A == 0:
-            raise NotImplementedError("Can't solve sphere-ray intersections resulting in a quadratic where A == 0")
-
-        C = offset_c.magnitude_squared
-        B = offset_b.magnitude_squared - self.radius_squared - A - C
-
-        # The part in the square root of the quadratic formula
-        #   b^2 - 4ac
         discriminant = B*B - 4*A*C
 
-        # No Real Solutions
         if discriminant < 0:
             return HitInfo(HitType.NO_HIT)
         
-        # One Real Solution (Square Root is 0, so + and - give the same answer)
         elif discriminant == 0:
+            t = -B / (2*A)
 
-            # Solution is positive
-            #   The camera faces towards the point (facing sphere)
-            if -B > 0:
-                return HitInfo(HitType.OUTSIDE_AHEAD, -B / (2*A), None, self.material)
-            # Solution is negative
-            #   The camera faces away from the point (facing away from sphere)
-            else:
-                return HitInfo(HitType.OUTSIDE_BEHIND, -B / (2*A), None, self.material)
+            if t < 0:
+                return HitInfo(HitType.NO_HIT)
+
+            normal = (ray.get_point(t) - self.center).normalize()
+            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
         
-        # Two Real Solutions
-        else:
-            # Smaller solution is positive
-            #   The camera faces towards both points (facing sphere)
-            if -B - (root := discriminant**0.5) > 0:
-                return HitInfo(HitType.OUTSIDE_AHEAD, (-B - root) / (2*A), None, self.material)
-            
-            # Only the larger solution is positive
-            #   The camera faces towards one point and away from the other (inside sphere)
-            elif -B + root > 0:
-                return HitInfo(HitType.INSIDE, (-B + root) / (2*A), None, self.material)
-            
-            # Two Negative Solutions
-            #   The camera faces away from both points (facing away from sphere)
-            else:
-                return HitInfo(HitType.OUTSIDE_BEHIND, (-B + root) / (2*A), None, self.material)
+        root = discriminant ** 0.5
+
+        if (t := (-B - root) / (2*A)) > 0:
+            normal = (ray.get_point(t) - self.center).normalize()
+            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
+        
+        elif (t := (-B + root) / (2*A)) > 0:
+            normal = (ray.get_point(t) - self.center).normalize()
+            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
+
+        return HitInfo(HitType.NO_HIT)
