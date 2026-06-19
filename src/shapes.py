@@ -3,29 +3,21 @@ from materials import Material, RGB
 
 
 
-class HitType:
-
-    NO_HIT = 0          # No Intersections
-    OUTSIDE_BEHIND = 1  # Intersection behind camera
-    INSIDE = 2          # Camera inside object
-    OUTSIDE_AHEAD = 3   # Intersection in front of camera
-
 class HitInfo:
 
-    def __init__(self, hit_type: HitType, t: None | float = None, normal_vector: None | Vec3 = None, material: None | Material = None):
+    def __init__(
+        self,
+        t: None | float = None,
+        normal_vector: None | Vec3 = None,
+        material: None | Material = None
+    ):
 
-        self.hit_type = hit_type
         self.t = t
         self.normal_vector = normal_vector
-
         self.material = material
     
     def __str__(self):
-        match self.hit_type:
-            case HitType.NO_HIT:
-                return f"HitInfo({self.hit_type})"
-            case _:
-                return f"HitInfo({self.hit_type},{self.t},{self.normal_vector},{self.material})"
+        return f"HitInfo({self.t},{self.normal_vector},{self.material})"
 
 
 
@@ -56,7 +48,7 @@ class Sphere:
 
         self.material = material
     
-    def get_hit_data(self, ray: Ray3D) -> HitInfo:
+    def get_hit_data(self, ray: Ray3D) -> None | HitInfo:
         """
         Returns the nearest distance t along the ray that the given ray intersects the sphere.
 
@@ -80,28 +72,36 @@ class Sphere:
 
         C = (ray.origin - self.center).magnitude_squared - self.radius_squared
 
-        discriminant = B*B - 4*A*C
+        if A == 0:
+            if B == 0:
+                raise NotImplementedError("If A == B == 0 then either C == 0 and all values of t are valid or C != 0 and no values of t are valid")
+            
+            if (t := -C / B) < 0:
+                return None
+            
+            normal = (ray.get_point(t) - self.center).normalize()
+            return HitInfo(t, normal, self.material)
 
-        if discriminant < 0:
-            return HitInfo(HitType.NO_HIT)
+        if (discriminant := B*B-4*A*C) < 0:
+            return None
         
         elif discriminant == 0:
             t = -B / (2*A)
 
             if t < 0:
-                return HitInfo(HitType.NO_HIT)
+                return None
 
             normal = (ray.get_point(t) - self.center).normalize()
-            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
+            return HitInfo(t, normal, self.material)
         
         root = discriminant ** 0.5
 
         if (t := (-B - root) / (2*A)) > 0:
             normal = (ray.get_point(t) - self.center).normalize()
-            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
+            return HitInfo(t, normal, self.material)
         
         elif (t := (-B + root) / (2*A)) > 0:
             normal = (ray.get_point(t) - self.center).normalize()
-            return HitInfo(HitType.OUTSIDE_AHEAD, t, normal, self.material)
+            return HitInfo(t, normal, self.material)
 
-        return HitInfo(HitType.NO_HIT)
+        return None
