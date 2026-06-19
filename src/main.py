@@ -6,34 +6,25 @@ from colorsys import hls_to_rgb
 
 from vectors import Vec3
 from materials import RGB, Material
-from shapes import HitType, Ray3D, Sphere
+from shapes import Ray3D, Sphere
 
 seed(0)
 
 
 
 # Image Constants
-ASPECT_RATIO = 4 / 3
-IMAGE_WIDTH = 360
+ASPECT_RATIO = 16 / 9
+IMAGE_WIDTH = 1920
 IMAGE_HEIGHT = round(IMAGE_WIDTH / ASPECT_RATIO)
 
-# Camera Constants
-VIEWPORT_HEIGHT = 2
-VIEWPORT_WIDTH = VIEWPORT_HEIGHT * ASPECT_RATIO
-FOCAL_LENGTH = 1
-
 ORIGIN = Vec3(0, 0, 0)
-HORIZONTAL = Vec3(VIEWPORT_WIDTH, 0, 0)
-VERTICAL = Vec3(0, VIEWPORT_HEIGHT, 0)
-LOWER_LEFT_CORNER = ORIGIN - HORIZONTAL / 2 - VERTICAL / 2 - Vec3(0, 0, FOCAL_LENGTH)
 
 PIXEL_WIDTH = 1 / (IMAGE_WIDTH - 1)
 PIXEL_HEIGHT = 1 / (IMAGE_HEIGHT - 1)
 
 # Ray Constants
-SAMPLES = 30
+SAMPLES = 10**2
 BOUNCES = 5
-EPSILON = 0.001
 
 SKY_COLOR = RGB(0.5, 0.5, 1.0)
 DEBUG_COLOR = RGB(1.0, 0.0, 1.0) * SAMPLES
@@ -46,25 +37,30 @@ DEBUG_COLOR = RGB(1.0, 0.0, 1.0) * SAMPLES
 #    Sphere(Vec3(0, 50, -10), 10, Material(RGB(100.0, 100.0, 100.0), 0.0))
 #]
 
-SHAPES = []
-
-for i in range(5):
-
-    x = 2 * i - 4
-    r = 0.2 * i
-
-    color = [0.75, 0.75, 0.75]
-
-    position = Vec3(x, 0, -5)
-    radius = 0.75
-    material = Material(RGB(*color), r)
-
-    SHAPES.append(Sphere(position, radius, material))
+#SHAPES = []
+#
+#for i in range(5):
+#
+#    x = 2 * i - 4
+#    r = 0.2 * i
+#
+#    color = [0.75, 0.75, 0.75]
+#
+#    position = Vec3(x, 0, -5)
+#    radius = 0.75
+#    material = Material(RGB(*color), r)
+#
+#    SHAPES.append(Sphere(position, radius, material))
 
 #SHAPES = [
 #    Sphere(Vec3(1, 0, -2), 1, Material(RGB(1, 1, 1), 0.5)),
 #    Sphere(Vec3(-2, 0, -3), 1, Material(RGB(1, 1, 1), 0))
 #]
+
+SHAPES = [
+    Sphere(Vec3(0, 0, -10), 1, Material(RGB(1, 0, 0), 0.5)),
+    Sphere(Vec3(0, 20, -10), 15, Material(RGB(1, 1, 1), 0))
+]
 
 
 
@@ -88,9 +84,6 @@ def get_color(ray: Ray3D, bounces: int = BOUNCES, default_color: RGB = SKY_COLOR
         ] = RGB color
     """
 
-    #if bounces != BOUNCES:
-    #    return DEBUG_COLOR
-
     if bounces == 0:
         return default_color
 
@@ -99,26 +92,22 @@ def get_color(ray: Ray3D, bounces: int = BOUNCES, default_color: RGB = SKY_COLOR
 
     for shape in SHAPES:
 
-        hit = shape.get_hit_data(ray)
-
-        if hit.hit_type != HitType.OUTSIDE_AHEAD:# or hit.t < EPSILON:
+        if type(shape) in [Sphere] and shape == nearest_shape:
             continue
 
-        elif type(shape) == Sphere and shape == nearest_shape:
+        if (hit := shape.get_hit_data(ray)) == None:
             continue
 
         elif nearest == None or nearest.t > hit.t:
             nearest = hit
             nearest_shape = shape
-            #if bounces < BOUNCES:
-            #    return DEBUG_COLOR
 
     # Hit nothing
     if nearest == None:
         return get_sky_color(ray)
     
-    # Hit something and it has a material
-    elif nearest.hit_type == HitType.OUTSIDE_AHEAD:
+    # Hit something
+    else:
 
         multiplier = nearest.material.reflect_proportion
 
@@ -126,19 +115,12 @@ def get_color(ray: Ray3D, bounces: int = BOUNCES, default_color: RGB = SKY_COLOR
         reflect_direction = nearest.normal_vector.reflect(ray.direction)
         reflected_ray = Ray3D(reflect_origin, reflect_direction)
 
-        #reflected_ray.origin = reflected_ray.get_point(EPSILON)
-        #print(nearest.material.reflect_proportion, reflected_ray)
-
         if nearest.material.reflect_proportion != 0:
             reflected_color = get_color(reflected_ray, bounces - 1, previous_shape=nearest_shape)
         else:
             reflected_color = RGB(0, 0, 0)
 
         return reflected_color * multiplier + nearest.material.color * (1 - multiplier)
-    
-    # Invalid Catch-All
-    else:
-        raise Exception("Invalid result")
 
 
 
@@ -157,8 +139,8 @@ image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT))
 with alive_bar(IMAGE_WIDTH * IMAGE_HEIGHT) as bar:
     for pixel_x, pixel_y in product(range(IMAGE_WIDTH), range(IMAGE_HEIGHT)):
 
-        u = pixel_x / (IMAGE_WIDTH - 1)
-        v = pixel_y / (IMAGE_HEIGHT - 1)
+        u = pixel_x / (IMAGE_HEIGHT - 1) - (IMAGE_WIDTH / (2 * IMAGE_HEIGHT))
+        v = (IMAGE_HEIGHT - pixel_y - 1) / (IMAGE_HEIGHT - 1) - 0.5
 
         color = RGB(0.0, 0.0, 0.0)
 
@@ -166,11 +148,20 @@ with alive_bar(IMAGE_WIDTH * IMAGE_HEIGHT) as bar:
 
             ray = Ray3D(
                 ORIGIN,
-                LOWER_LEFT_CORNER
-                + (u + (PIXEL_WIDTH * (random() - 0.5))) * HORIZONTAL
-                + (v + (PIXEL_HEIGHT * (random() - 0.5))) * VERTICAL
-                - ORIGIN
+                Vec3(
+                    u + PIXEL_WIDTH * (random() - 0.5),
+                    v + PIXEL_HEIGHT * (random() - 0.5),
+                    -1
+                ).normalize()
             )
+
+            #ray = Ray3D(
+            #    ORIGIN,
+            #    LOWER_LEFT_CORNER
+            #    + (u + (PIXEL_WIDTH * (random() - 0.5))) * HORIZONTAL
+            #    + (v + (PIXEL_HEIGHT * (random() - 0.5))) * VERTICAL
+            #    - ORIGIN
+            #)
 
             sample_color = get_color(ray)
             color += sample_color
